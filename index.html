@@ -488,20 +488,61 @@
                 }
             },
 
-            handleLogin(event) {
+            async handleLogin(event) {
                 event.preventDefault();
-                const emailInput = document.getElementById('email-address').value;
                 
-                // Simulação simples de validação de login
-                if (emailInput.trim() !== "") {
-                    this.state.isLoggedIn = true;
-                    // Limpar form
-                    event.target.reset();
-                    document.getElementById('login-error').classList.add('hidden');
-                    // Navegar para dashboard
-                    this.navigate('dashboard');
-                } else {
-                    document.getElementById('login-error').classList.remove('hidden');
+                // Pegamos o email e a senha digitados pelo usuário
+                const emailInput = document.getElementById('email-address').value;
+                const passwordInput = document.getElementById('password').value;
+                
+                // Elementos da tela para mostrar erros e mudar o botão
+                const errorDiv = document.getElementById('login-error');
+                const errorMessage = errorDiv.querySelector('p');
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                
+                try {
+                    // 1. Muda o visual do botão para "Conectando..." e esconde erros antigos
+                    submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Conectando...';
+                    submitButton.disabled = true;
+                    errorDiv.classList.add('hidden');
+
+                    // 2. Chama a sua API oficial no Render
+                    const response = await fetch("https://click-on-88us.onrender.com/api/login", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ email: emailInput, senha: passwordInput })
+                    });
+
+                    const data = await response.json();
+
+                    // 3. Verifica se o login deu certo de acordo com a resposta da API
+                    if (response.ok && data.sucesso) {
+                        // Salva as fotos no armazenamento do navegador para a outra página conseguir ler
+                        localStorage.setItem('fotos_cliente', JSON.stringify(data.fotos));
+                        
+                        // Redireciona o usuário fisicamente para a nova página
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        // Se a senha estiver errada, joga um erro
+                        throw new Error(data.detail || "E-mail ou senha incorretos.");
+                    }
+                } catch (error) {
+                    // 4. Se algo der errado (senha incorreta ou servidor dormindo), mostra a mensagem
+                    errorDiv.classList.remove('hidden');
+                    
+                    // Se o erro for de conexão, avisa que o Render grátis está acordando
+                    if (error.message.includes("Failed to fetch")) {
+                        errorMessage.innerText = "O servidor está iniciando. Por favor, aguarde uns 30 segundos e tente novamente.";
+                    } else {
+                        errorMessage.innerText = error.message;
+                    }
+                } finally {
+                    // 5. Restaura o botão ao normal
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
                 }
             },
 
